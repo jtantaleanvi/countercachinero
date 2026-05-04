@@ -2,38 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CONTRA JS - ULTRA FIX</title>
-    <style>
-        body { background: #000; color: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; }
-        #game-container { position: relative; width: 800px; height: 450px; border: 4px solid #444; background: #000; }
-        
-        /* EL BOTÓN DE INICIO: Ahora es lo más importante y está arriba de todo */
-        #overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 9999; /* Super alto */
-            cursor: pointer; 
-        }
-
-        #hud { 
-            position: absolute; top: 10px; width: 100%; 
-            display: flex; justify-content: space-around; 
-            z-index: 100; pointer-events: none; /* Esto permite que los clics pasen a través */
-            color: #0f0; font-weight: bold; font-size: 20px;
-        }
-
-        canvas { display: block; background: #001; image-rendering: pixelated; }
-        .btn-play { border: 4px solid red; padding: 20px; color: white; font-size: 24px; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONTRA JS - DEFINITIVE EDITION</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
+
+    <div id="game-wrapper">
         <div id="overlay" onclick="iniciarJuego()">
-            <h1 style="color:red; font-size: 60px; margin-bottom: 10px;">CONTRA JS</h1>
-            <div class="btn-play">HAZ CLIC AQUÍ PARA EMPEZAR</div>
-            <p style="margin-top: 20px; color: #888;">Z: Saltar | X: Disparar | 1, 2, 3: Armas</p>
+            <h1>CONTRA JS</h1>
+            <div class="btn-play">INSERT COIN (CLIC AQUÍ)</div>
+            <p class="controls">WASD / FLECHAS: Mover | Z: Saltar | X: Disparar | 1, 2, 3: Armas</p>
         </div>
 
         <div id="hud">
@@ -43,7 +22,10 @@
         </div>
 
         <canvas id="gameCanvas"></canvas>
+        
+        <div id="crt-effect"></div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
