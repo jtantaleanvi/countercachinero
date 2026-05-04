@@ -1,156 +1,189 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const healthDisplay = document.getElementById('health-display');
-const weaponDisplay = document.getElementById('weapon-display');
+const startScreen = document.getElementById('start-screen');
 
 canvas.width = 800;
-canvas.height = 500;
+canvas.height = 450;
 
-let gameStarted = false;
-const gravity = 0.6;
-const keys = {};
-let cameraX = 0; // El secreto del mapa largo
+// CONFIGURACIÓN DE NIVEL
+const world = { width: 4000, height: 450, gravity: 0.7 };
+const camera = { x: 0, y: 0 };
+let gameRunning = false;
 
-// Definición de un mapa más extenso
-const worldWidth = 3000;
-const platforms = [
-    { x: 0, y: 450, w: 3000, h: 50, type: 'ground' }, // Suelo infinito
-    { x: 200, y: 320, w: 150, h: 20 },
-    { x: 450, y: 220, w: 200, h: 20 },
-    { x: 800, y: 350, w: 300, h: 20 },
-    { x: 1200, y: 250, w: 200, h: 20 },
-    { x: 1600, y: 320, w: 400, h: 20 },
-    { x: 2200, y: 200, w: 150, h: 20 }
-];
+// CONTROL DE ENTRADA (Arregla el bug de movimiento)
+const input = {
+    right: false, left: false, up: false, down: false,
+    jump: false, shoot: false
+};
 
+const handleKey = (e, status) => {
+    switch(e.code) {
+        case 'ArrowRight': case 'KeyD': input.right = status; break;
+        case 'ArrowLeft':  case 'KeyA': input.left = status; break;
+        case 'ArrowUp':    case 'KeyW': input.up = status; break;
+        case 'ArrowDown':  case 'KeyS': input.down = status; break;
+        case 'KeyZ':       case 'Space': input.jump = status; break;
+        case 'KeyX':       case 'KeyK': input.shoot = status; break;
+    }
+};
+
+window.addEventListener('keydown', e => handleKey(e, true));
+window.addEventListener('keyup', e => handleKey(e, false));
+
+// OBJETOS DEL JUEGO
 class Player {
     constructor() {
-        this.x = 100;
-        this.y = 300;
-        this.w = 30;
-        this.h = 45;
-        this.vx = 0;
-        this.vy = 0;
-        this.speed = 5;
-        this.jump = 13;
-        this.grounded = false;
-        this.health = 100;
-        this.dir = 1;
+        this.x = 100; this.y = 300;
+        this.w = 35;  this.h = 55;
+        this.vx = 0;  this.vy = 0;
+        this.dir = 1; // 1: derecha, -1: izquierda
+        this.isJumping = false;
         this.bullets = [];
-        this.weapon = 'Rifle';
+        this.hp = 100;
         this.lastShot = 0;
     }
 
     draw() {
-        // "Sprite" de 8 bits hecho con rectángulos
-        ctx.fillStyle = "#00ffcc";
-        ctx.fillRect(this.x - cameraX, this.y, this.w, this.h);
-        // Detalles: Ojos y Mochila
-        ctx.fillStyle = "black";
-        let eyePos = this.dir === 1 ? 18 : 5;
-        ctx.fillRect(this.x - cameraX + eyePos, this.y + 10, 6, 6);
-        ctx.fillStyle = "#0088aa";
-        ctx.fillRect(this.x - cameraX + (this.dir === 1 ? -5 : 25), this.y + 15, 10, 20);
+        ctx.save();
+        ctx.translate(this.x - camera.x, this.y);
+        if (this.dir === -1) { ctx.translate(this.w, 0); ctx.scale(-1, 1); }
+
+        // Cuerpo (Estilo 8-bit)
+        ctx.fillStyle = "#2255ff"; // Pantalón
+        ctx.fillRect(5, 30, 20, 25);
+        ctx.fillStyle = "#ffaa88"; // Piel
+        ctx.fillRect(8, 10, 15, 20);
+        ctx.fillStyle = "#ff0000"; // Chaleco
+        ctx.fillRect(5, 15, 20, 15);
+        ctx.fillStyle = "#333";    // Botas/Pelo
+        ctx.fillRect(8, 0, 15, 10);
+        
+        // Arma
+        ctx.fillStyle = "#777";
+        ctx.fillRect(20, 20, 25, 6);
+        ctx.restore();
+
+        // Balas
+        this.bullets.forEach((b, i) => {
+            b.x += b.vx;
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(b.x - camera.x, b.y, 4, 0, Math.PI*2);
+            ctx.fill();
+            if (b.x > camera.x + canvas.width || b.x < camera.x) this.bullets.splice(i, 1);
+        });
     }
 
-    update() {
-        if (keys['arrowright']) { this.vx = this.speed; this.dir = 1; }
-        else if (keys['arrowleft']) { this.vx = -this.speed; this.dir = -1; }
-        else { this.vx = 0; }
+    update(platforms) {
+        if (input.right) { this.vx = 6; this.dir = 1; }
+        else if (input.left) { this.vx = -6; this.dir = -1; }
+        else { this.vx *= 0.8; }
 
-        if (keys['z'] && this.grounded) { this.vy = -this.jump; this.grounded = false; }
+        if (input.jump && !this.isJumping) {
+            this.vy = -15;
+            this.isJumping = true;
+        }
 
-        this.vy += gravity;
+        this.vy += world.gravity;
         this.x += this.vx;
         this.y += this.vy;
 
-        // Limites del mundo
-        if (this.x < 0) this.x = 0;
-        if (this.x > worldWidth - this.w) this.x = worldWidth - this.w;
-
-        // Colisión con plataformas
-        this.grounded = false;
+        // Colisiones
         platforms.forEach(p => {
-            if (this.vy > 0 && this.y + this.h <= p.y + this.vy && this.y + this.h + this.vy >= p.y &&
-                this.x + this.w > p.x && this.x < p.x + p.w) {
+            if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w &&
+                this.y + this.h > p.y && this.y + this.h < p.y + p.h + this.vy) {
                 this.y = p.y - this.h;
                 this.vy = 0;
-                this.grounded = true;
+                this.isJumping = false;
             }
         });
 
-        // Cámara sigue al jugador
-        cameraX = this.x - canvas.width / 3;
-        if (cameraX < 0) cameraX = 0;
-        if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+        // Limites
+        if (this.x < 0) this.x = 0;
+        if (this.y > world.height) { this.y = 0; this.hp -= 20; } // Caída al vacío
 
-        if (keys['x']) this.shoot();
+        // Scroll de cámara
+        camera.x = this.x - canvas.width / 3;
+        if (camera.x < 0) camera.x = 0;
+        if (camera.x > world.width - canvas.width) camera.x = world.width - canvas.width;
+
+        if (input.shoot) this.fire();
     }
 
-    shoot() {
-        const now = Date.now();
-        if (now - this.lastShot > 200) {
-            this.bullets.push({x: this.x + (this.dir === 1 ? 30 : -10), y: this.y + 20, vx: 12 * this.dir});
+    fire() {
+        let now = Date.now();
+        if (now - this.lastShot > 150) {
+            this.bullets.push({ x: this.x + (this.dir === 1 ? 40 : -10), y: this.y + 23, vx: 15 * this.dir });
             this.lastShot = now;
         }
     }
 }
 
+// ESCENARIO
+const platforms = [
+    { x: 0, y: 400, w: 800, h: 50 },
+    { x: 900, y: 350, w: 400, h: 30 },
+    { x: 1400, y: 300, w: 300, h: 30 },
+    { x: 1800, y: 400, w: 1000, h: 50 },
+    { x: 2200, y: 250, w: 200, h: 20 },
+];
+
+const enemies = [
+    { x: 600, y: 350, w: 40, h: 50, alive: true },
+    { x: 1100, y: 300, w: 40, h: 50, alive: true },
+    { x: 2500, y: 350, w: 40, h: 50, alive: true }
+];
+
 const p1 = new Player();
-const enemies = [{x: 600, y: 400, health: 30}, {x: 1500, y: 400, health: 30}, {x: 2500, y: 400, health: 30}];
 
-window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
-function loop() {
+// LOOP PRINCIPAL
+function main() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!gameStarted) {
-        ctx.fillStyle = "white";
-        ctx.font = "30px Courier New";
-        ctx.fillText("CLIC PARA JUGAR", 280, 250);
-        return;
+    if (gameRunning) {
+        // Fondo (Paralaje)
+        ctx.fillStyle = "#000022";
+        for(let i=0; i<10; i++) {
+            ctx.fillRect((i * 500) - camera.x * 0.3, 100, 200, 350);
+        }
+
+        // Dibujar Plataformas
+        ctx.fillStyle = "#33aa33";
+        platforms.forEach(p => {
+            ctx.fillRect(p.x - camera.x, p.y, p.w, p.h);
+            ctx.fillStyle = "#115511";
+            ctx.fillRect(p.x - camera.x, p.y + 10, p.w, 5); // Detalle hierba
+            ctx.fillStyle = "#33aa33";
+        });
+
+        // Enemigos
+        enemies.forEach(en => {
+            if (!en.alive) return;
+            ctx.fillStyle = "red";
+            ctx.fillRect(en.x - camera.x, en.y, en.w, en.h);
+            
+            // Colisión con balas
+            p1.bullets.forEach(b => {
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                    en.alive = false;
+                }
+            });
+        });
+
+        p1.update(platforms);
+        p1.draw();
+
+        document.getElementById('health').innerText = Math.max(0, p1.hp);
+        document.getElementById('score').innerText = (4000 - Math.floor(enemies.filter(e => e.alive).length * 1000)).toString().padStart(5, '0');
+
     }
 
-    // Dibujar plataformas con textura de "ladrillo"
-    platforms.forEach(p => {
-        ctx.fillStyle = "#444";
-        ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
-        ctx.strokeStyle = "#666";
-        ctx.strokeRect(p.x - cameraX, p.y, p.w, p.h);
-    });
-
-    p1.update();
-    p1.draw();
-
-    // Balas
-    ctx.fillStyle = "yellow";
-    p1.bullets.forEach((b, i) => {
-        b.x += b.vx;
-        ctx.fillRect(b.x - cameraX, b.y, 10, 5);
-        if (b.x < cameraX || b.x > cameraX + canvas.width) p1.bullets.splice(i, 1);
-    });
-
-    // Enemigos con "ojos"
-    enemies.forEach((en, i) => {
-        ctx.fillStyle = "red";
-        ctx.fillRect(en.x - cameraX, en.y, 30, 40);
-        ctx.fillStyle = "white";
-        ctx.fillRect(en.x - cameraX + 5, en.y + 10, 5, 5); // Ojos
-        ctx.fillRect(en.x - cameraX + 20, en.y + 10, 5, 5);
-
-        // Colisión bala-enemigo
-        p1.bullets.forEach((b, bi) => {
-            if (b.x > en.x && b.x < en.x + 30 && b.y > en.y && b.y < en.y + 40) {
-                en.health -= 10;
-                p1.bullets.splice(bi, 1);
-                if (en.health <= 0) enemies.splice(i, 1);
-            }
-        });
-    });
-
-    requestAnimationFrame(loop);
+    requestAnimationFrame(main);
 }
 
-canvas.addEventListener('mousedown', () => gameStarted = true);
-loop();
+startScreen.addEventListener('click', () => {
+    gameRunning = true;
+    startScreen.style.display = 'none';
+});
+
+main();
