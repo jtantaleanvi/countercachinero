@@ -1,257 +1,136 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const startOverlay = document.getElementById('start-overlay');
+canvas.width = 800; canvas.height = 450;
 
-canvas.width = 800;
-canvas.height = 450;
-
-// CONFIGURACIÓN GLOBAL
-let gameStarted = false;
-const gravity = 0.7;
+let gameRunning = false;
+let cameraX = 0;
 const keys = {};
-let cameraX = 0; // Para el scroll del mapa
 
-// ESTADO DEL JUEGO
-const gameState = { score: 0, health: 100, weapon: 'Rifle' };
-
-// ACTUALIZAR HUD (Textos de vida/score)
-function updateHUD() {
-    document.getElementById('score-val').innerText = gameState.score.toString().padStart(5, '0');
-    document.getElementById('hp-val').innerText = Math.max(0, gameState.health);
-    document.getElementById('weapon-val').innerText = gameState.weapon;
-}
-
-// DEFINICIÓN DE ARMAS Y SUS PROPIEDADES
+// ESTADO
+const state = { hp: 100, score: 0, weapon: 'RIFLE' };
 const arsenal = {
-    'Rifle': { fireRate: 250, bulletSpeed: 14, damage: 10, spread: false, color: '#fff' },
-    'Spread': { fireRate: 400, bulletSpeed: 11, damage: 15, spread: true, color: '#ff0' }, // Balas amarillas
-    'M-Gun': { fireRate: 90, bulletSpeed: 16, damage: 8, spread: false, color: '#0ff' }  // Balas cian
+    'RIFLE': { rate: 200, speed: 12, color: 'white', multi: false },
+    'SPREAD': { rate: 400, speed: 10, color: 'yellow', multi: true },
+    'M-GUN': { rate: 80, speed: 15, color: 'cyan', multi: false }
 };
 
 // JUGADOR
-const player = {
-    x: 100, y: 300, w: 35, h: 55,
-    vx: 0, vy: 0,
-    speed: 6, jump: -15,
-    grounded: false, dir: 1,
-    bullets: [],
-    lastShot: 0
-};
+const p = { x: 100, y: 300, w: 30, h: 50, vx: 0, vy: 0, dir: 1, grounded: false, bullets: [], lastShot: 0 };
 
-// ENEMIGOS (Soldados Rojos con IA)
+// ENEMIGOS
 let enemies = [];
-const enemyDef = { w: 30, h: 45, speed: 2.5, health: 20 };
-
 function spawnEnemy() {
-    // Aparecen fuera de cámara, a la derecha
-    const spawnX = cameraX + canvas.width + 50;
-    enemies.push({ 
-        x: spawnX, 
-        y: 355, // Justo sobre el suelo
-        hp: enemyDef.health,
-        alive: true
-    });
+    if (enemies.length < 5) {
+        enemies.push({ x: cameraX + 850, y: 355, w: 30, h: 45, hp: 20, alive: true });
+    }
 }
 
-// CONTROL DE ENTRADA (Reforzado para WASD y Flechas)
+// INICIO
+function iniciarJuego() {
+    gameRunning = true;
+    document.getElementById('start-overlay').style.display = 'none';
+}
+
 window.addEventListener('keydown', e => {
     keys[e.key.toLowerCase()] = true;
-    if (e.key === 'x' || e.key === 'X') shoot();
-    // Cambiar armas con números 1, 2, 3
-    if (e.key === '1') { gameState.weapon = 'Rifle'; updateHUD(); }
-    if (e.key === '2') { gameState.weapon = 'Spread'; updateHUD(); }
-    if (e.key === '3') { gameState.weapon = 'M-Gun'; updateHUD(); }
+    if (e.key === '1') state.weapon = 'RIFLE';
+    if (e.key === '2') state.weapon = 'SPREAD';
+    if (e.key === '3') state.weapon = 'M-GUN';
+    document.getElementById('wp-val').innerText = state.weapon;
 });
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// FUNCION DE DISPARO (Maneja las diferentes armas)
-function shoot() {
-    if (!gameStarted) return;
-    const now = Date.now();
-    const wConfig = arsenal[gameState.weapon];
-
-    if (now - player.lastShot > wConfig.fireRate) {
-        const bX = player.x + (player.dir === 1 ? player.w : -5);
-        const bY = player.y + 22;
-
-        if (wConfig.spread) {
-            // Spread Gun: 3 balas en abanico (trigonometría básica)
-            player.bullets.push({ x: bX, y: bY, vx: wConfig.bulletSpeed * player.dir, vy: -3, color: wConfig.color });
-            player.bullets.push({ x: bX, y: bY, vx: wConfig.bulletSpeed * player.dir, vy: 0, color: wConfig.color });
-            player.bullets.push({ x: bX, y: bY, vx: wConfig.bulletSpeed * player.dir, vy: 3, color: wConfig.color });
-        } else {
-            // Rifle o Machine Gun
-            player.bullets.push({ x: bX, y: bY, vx: wConfig.bulletSpeed * player.dir, vy: 0, color: wConfig.color });
-        }
-        player.lastShot = now;
-    }
-}
-
-// BUCLE PRINCIPAL DE ACTUALIZACIÓN (Lógica)
 function update() {
-    if (!gameStarted) return;
+    if (!gameRunning) return;
 
-    // Movimiento del Jugador
-    if (keys['arrowright'] || keys['d']) { player.vx = player.speed; player.dir = 1; }
-    else if (keys['arrowleft'] || keys['a']) { player.vx = -player.speed; player.dir = -1; }
-    else { player.vx *= 0.8; } // Fricción
+    // Movimiento
+    if (keys['arrowright'] || keys['d']) { p.vx = 6; p.dir = 1; }
+    else if (keys['arrowleft'] || keys['a']) { p.vx = -6; p.dir = -1; }
+    else { p.vx *= 0.8; }
 
-    // Salto
-    if ((keys['z'] || keys[' '] ) && player.grounded) {
-        player.vy = player.jump;
-        player.grounded = false;
+    if ((keys['z'] || keys[' ']) && p.grounded) { p.vy = -14; p.grounded = false; }
+
+    p.vy += 0.7; // Gravedad
+    p.x += p.vx; p.y += p.vy;
+
+    // Suelo infinito
+    if (p.y > 350) { p.y = 350; p.vy = 0; p.grounded = true; }
+    if (p.x < cameraX) p.x = cameraX;
+
+    cameraX = p.x - 150;
+
+    // Disparar
+    if (keys['x'] || keys['k']) {
+        const now = Date.now();
+        const gun = arsenal[state.weapon];
+        if (now - p.lastShot > gun.rate) {
+            if (gun.multi) {
+                p.bullets.push({x: p.x+20, y: p.y+20, vx: gun.speed*p.dir, vy: -2, c: gun.color});
+                p.bullets.push({x: p.x+20, y: p.y+20, vx: gun.speed*p.dir, vy: 0, c: gun.color});
+                p.bullets.push({x: p.x+20, y: p.y+20, vx: gun.speed*p.dir, vy: 2, c: gun.color});
+            } else {
+                p.bullets.push({x: p.x+20, y: p.y+20, vx: gun.speed*p.dir, vy: 0, c: gun.color});
+            }
+            p.lastShot = now;
+        }
     }
 
-    // Físicas y Gravedad
-    player.vy += gravity;
-    player.x += player.vx;
-    player.y += player.vy;
-
-    // Colisión con el Suelo e Infinito
-    if (player.y + player.h > 400) {
-        player.y = 400 - player.h;
-        player.vy = 0;
-        player.grounded = true;
-    }
-    if (player.x < 0) player.x = 0;
-
-    // CÁMARA CON SCROLL
-    cameraX = player.x - 150;
-    if (cameraX < 0) cameraX = 0;
-
-    // Generación aleatoria de enemigos (Spawn)
-    if (Math.random() < 0.02 && enemies.filter(e => e.alive).length < 5) {
-        spawnEnemy();
-    }
-
-    // ACTUALIZAR ENEMIGOS (Movimiento e IA)
-    enemies.forEach(en => {
-        if (!en.alive) return;
+    // Enemigos IA
+    if (Math.random() < 0.02) spawnEnemy();
+    enemies.forEach((en, i) => {
+        if (en.x > p.x) en.x -= 2; else en.x += 2; // Te persiguen
         
-        // IA: Correr hacia el jugador
-        if (en.x > player.x) en.x -= enemyDef.speed;
-        else en.x += enemyDef.speed;
-
-        // Colisión Enemigo-Jugador (Daño)
-        if (checkCollision(en, {x:player.x, y:player.y, w:player.w, h:player.h})) {
-            gameState.health -= 0.5; // Daño continuo por contacto
-            if (gameState.health <= 0) gameOver();
-            updateHUD();
-        }
-    });
-
-    // ACTUALIZAR BALAS Y COLISIONES
-    player.bullets.forEach((b, i) => {
-        b.x += b.vx;
-        b.y += (b.vy || 0); // Para el Spread
-
-        // Eliminar balas fuera de cámara
-        if (b.x > cameraX + canvas.width + 100 || b.x < cameraX - 100) {
-            player.bullets.splice(i, 1);
-            return;
+        if (Math.abs(p.x - en.x) < 30 && Math.abs(p.y - en.y) < 40) {
+            state.hp -= 0.2;
+            document.getElementById('hp-val').innerText = Math.floor(state.hp);
+            if (state.hp <= 0) location.reload();
         }
 
-        // Colisión Bala-Enemigo
-        enemies.forEach((en, ei) => {
-            if (en.alive && checkCollision({x:b.x, y:b.y, w:10, h:5}, {x:en.x, y:en.y, w:enemyDef.w, h:enemyDef.h})) {
-                en.hp -= arsenal[gameState.weapon].damage;
-                player.bullets.splice(i, 1); // Eliminar bala
-                if (en.hp <= 0) {
-                    en.alive = false;
-                    gameState.score += 100;
-                    updateHUD();
-                }
+        p.bullets.forEach((b, bi) => {
+            if (b.x > en.x && b.x < en.x + 30 && b.y > en.y && b.y < en.y + 45) {
+                en.alive = false;
+                p.bullets.splice(bi, 1);
+                state.score += 100;
+                document.getElementById('sc-val').innerText = state.score;
             }
         });
     });
-    
-    // Limpiar enemigos muertos de la lista
-    enemies = enemies.filter(en => en.alive || en.x > cameraX - 100);
+    enemies = enemies.filter(en => en.alive && en.x > cameraX - 100);
+    p.bullets = p.bullets.filter(b => b.x > cameraX && b.x < cameraX + 900);
 }
 
-// BUCLE PRINCIPAL DE DIBUJO (Gráficos procedimentales 8-bit)
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.save();
-    ctx.translate(-cameraX, 0); // Mover el mundo entero
+    ctx.translate(-cameraX, 0);
 
-    // DIBUJAR EL SUELO (Textura de selva/metal procedimental)
-    // Usamos el modulo (%) para que el suelo se repita infinitamente
-    const groundOffset = Math.floor(cameraX / 40) * 40;
-    for (let x = groundOffset - 80; x < groundOffset + canvas.width + 80; x += 40) {
-        // Bloque base (Verde oscuro)
-        ctx.fillStyle = "#1a4d1a"; 
-        ctx.fillRect(x, 400, 40, 50);
-        // Detalle hierba (Verde brillante)
-        ctx.fillStyle = "#33aa33";
-        ctx.fillRect(x + 5, 400, 30, 8);
-        ctx.fillStyle = "#115511";
-        ctx.fillRect(x, 408, 40, 4);
-    }
+    // Dibujar suelo repetido
+    ctx.fillStyle = "#141";
+    for(let i = 0; i < 100; i++) ctx.fillRect(i*100, 400, 98, 50);
 
-    // DIBUJAR ENEMIGOS (Soldados Rojos)
+    // Enemigos
+    ctx.fillStyle = "red";
     enemies.forEach(en => {
-        if (!en.alive) return;
-        ctx.fillStyle = "#ff3333"; // Cuerpo rojo
-        ctx.fillRect(en.x, en.y, enemyDef.w, enemyDef.h);
-        // Detalles casco y botas (Negro)
-        ctx.fillStyle = "#000";
-        ctx.fillRect(en.x, en.y, enemyDef.w, 8); // Casco
-        ctx.fillRect(en.x + 5, en.y + enemyDef.h - 10, 20, 10); // Botas
+        ctx.fillRect(en.x, en.y, en.w, en.h);
+        ctx.fillStyle = "black"; ctx.fillRect(en.x+5, en.y+5, 20, 5); // Casco
+        ctx.fillStyle = "red";
     });
 
-    // DIBUJAR JUGADOR (Estilo Contra NES Procedimental)
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    if (player.dir === -1) { ctx.translate(player.w, 0); ctx.scale(-1, 1); } // Girar sprite
+    // Jugador (Contra Style)
+    ctx.fillStyle = "#25f"; ctx.fillRect(p.x, p.y+25, 30, 25); // Pantalón
+    ctx.fillStyle = "#f33"; ctx.fillRect(p.x, p.y+5, 30, 20); // Chaleco
+    ctx.fillStyle = "#ffccaa"; ctx.fillRect(p.x+5, p.y, 20, 15); // Cabeza
+    ctx.fillStyle = "grey"; ctx.fillRect(p.x + (p.dir==1?20:-10), p.y+15, 20, 8); // Arma
 
-    // Pantalón (Azul)
-    ctx.fillStyle = "#2255ff"; ctx.fillRect(5, 30, 25, 25);
-    // Chaleco (Rojo)
-    ctx.fillStyle = "#ff3333"; ctx.fillRect(5, 10, 25, 20);
-    // Piel (Naranja/Carne)
-    ctx.fillStyle = "#ffaa88"; ctx.fillRect(8, 5, 18, 15);
-    // Pelo/Mochila (Marrón)
-    ctx.fillStyle = "#663300"; ctx.fillRect(10, 0, 15, 8); ctx.fillRect(-2, 12, 8, 20);
-    // ARMA (Gris)
-    ctx.fillStyle = "#888"; ctx.fillRect(20, 18, 25, 7);
+    // Balas
+    p.bullets.forEach(b => {
+        b.x += b.vx; b.y += b.vy;
+        ctx.fillStyle = b.c; ctx.fillRect(b.x, b.y, 8, 8);
+    });
+
     ctx.restore();
-
-    // DIBUJAR BALAS
-    player.bullets.forEach(b => {
-        ctx.fillStyle = b.color;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); // Balas redondas retro
-        ctx.fill();
-    });
-
-    ctx.restore(); // Restaurar cámara
+    requestAnimationFrame(draw);
 }
 
-// UTILIDADES
-function checkCollision(r1, r2) {
-    return (r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y);
-}
-
-function gameOver() {
-    alert("GAME OVER\nScore: " + gameState.score);
-    location.reload();
-}
-
-// LOOP DEL JUEGO
-function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-}
-
-// INICIAR
-startOverlay.addEventListener('click', () => {
-    gameStarted = true;
-    startOverlay.style.display = 'none';
-    window.focus(); // Forzar foco para teclado
-    updateHUD();
-});
-
-gameLoop();
+setInterval(update, 1000/60);
+draw();
