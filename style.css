@@ -1,6 +1,6 @@
-/* Estilo Base: Fondo negro profundo */
+/* RESET Y FONDO TOTAL */
 body {
-    background-color: #080808;
+    background-color: #050505;
     margin: 0;
     display: flex;
     justify-content: center;
@@ -11,109 +11,90 @@ body {
     color: #fff;
 }
 
-/* El Contenedor: Simula un monitor de arcade */
-#game-container {
+/* CONTENEDOR ARCADE */
+#game-wrapper {
     position: relative;
-    border: 12px solid #222;
-    border-radius: 10px;
+    border: 10px solid #222;
+    border-radius: 15px;
     box-shadow: 
-        0 0 0 4px #444, 
-        0 0 40px rgba(255, 0, 0, 0.3),
-        inset 0 0 100px rgba(0, 0, 0, 0.5);
+        0 0 0 5px #444, 
+        0 0 50px rgba(255, 0, 0, 0.4),
+        inset 0 0 100px rgba(0,0,0,0.8);
     background: #000;
-    overflow: hidden;
 }
 
-/* Efecto de "Scanlines" (Rayas de TV antigua) */
-#game-container::before {
+/* EFECTO CRT (Líneas de escaneo de TV vieja) */
+#game-wrapper::after {
     content: " ";
     position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
     z-index: 10;
     background-size: 100% 3px, 3px 100%;
-    pointer-events: none;
+    pointer-events: none; /* Crucial para que no bloquee el click */
 }
 
-/* Animación de parpadeo de señal */
-#game-container::after {
-    content: " ";
-    position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: rgba(18, 16, 16, 0.1);
-    opacity: 0;
-    z-index: 11;
-    pointer-events: none;
-    animation: flicker 0.15s infinite;
-}
-
-@keyframes flicker {
-    0% { opacity: 0.1; }
-    50% { opacity: 0.02; }
-    100% { opacity: 0.08; }
-}
-
-/* HUD: Textos con brillo de neón */
+/* HUD (VIDA, SCORE, ARMA) */
 #hud {
     position: absolute;
     top: 15px;
     width: 100%;
     display: flex;
     justify-content: space-around;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
-    letter-spacing: 2px;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
     z-index: 15;
     pointer-events: none;
+    text-shadow: 2px 2px #000, 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
-/* Colores específicos para el HUD */
-#sc-val { color: #ffcc00; } /* Oro para el Score */
-#hp-val { color: #ff3333; } /* Rojo para Vida */
-#wp-val { color: #00ffff; } /* Cian para Arma */
+#sc { color: #ffcc00; } /* Oro */
+#hp { color: #ff3333; } /* Rojo */
+#gun { color: #00ffff; } /* Cian */
 
-/* Pantalla de Inicio Estilo Retro */
-#start-overlay {
+/* PANTALLA DE INICIO */
+#overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle, #220000 0%, #000 100%);
+    background: radial-gradient(circle, #200 0%, #000 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 100;
     cursor: pointer;
-    text-align: center;
+    transition: opacity 0.5s;
 }
 
-#start-overlay h1 {
-    font-size: 60px;
+#overlay h1 {
+    font-size: 65px;
     color: #ff0000;
     margin: 0;
-    text-shadow: 4px 4px 0px #550000, 0 0 20px #ff0000;
-    animation: pulse 1s infinite alternate;
+    text-shadow: 5px 5px 0px #fff, 0 0 30px #f00;
+    letter-spacing: -5px;
+    font-style: italic;
 }
 
-@keyframes pulse {
-    from { transform: scale(1); opacity: 0.8; }
-    to { transform: scale(1.05); opacity: 1; }
-}
-
-#start-overlay p {
-    font-size: 18px;
-    margin-top: 20px;
+#overlay p {
+    font-size: 20px;
+    margin-top: 25px;
     color: #fff;
-    letter-spacing: 4px;
-    animation: blink 0.8s step-end infinite;
+    letter-spacing: 3px;
 }
 
-@keyframes blink {
+/* ANIMACIÓN "INSERT COIN" */
+.blink {
+    animation: blinker 0.8s step-end infinite;
+}
+
+@keyframes blinker {
     50% { opacity: 0; }
 }
 
+/* RENDERIZADO PIXELADO (Para que no se vea borroso) */
 canvas {
     display: block;
-    image-rendering: pixelated; /* Crucial para que no se vea borroso */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
