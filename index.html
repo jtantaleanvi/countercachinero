@@ -2,20 +2,23 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contra: GitHub Edition</title>
-    <link rel="stylesheet" href="style.css">
+    <title>CONTRA ULTRA FIX</title>
+    <style>
+        body { background: #000; color: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; }
+        #game-wrapper { position: relative; border: 4px solid #444; }
+        #hud { position: absolute; top: 10px; left: 10px; width: 95%; display: flex; justify-content: space-between; font-size: 20px; color: #0f0; pointer-events: none; z-index: 10; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 20; }
+        canvas { background: #111; display: block; }
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="start-screen">
-            <h1>CONTRA JS</h1>
-            <p>HAZ CLIC PARA EMPEZAR</p>
-        </div>
+    <div id="game-wrapper">
         <div id="hud">
-            <div>P1: <span id="score">00000</span></div>
-            <div>VIDA: <span id="health">100</span>%</div>
-            <div>ARMA: <span id="weapon">RIFLE</span></div>
+            <div>VIDA: <span id="hp">100</span>%</div>
+            <div>ARMA: M-GUN</div>
+        </div>
+        <div id="overlay" onclick="startGame()">
+            <h1 style="color:red; text-align:center;">CONTRA JS<br><span style="font-size:16px; color:white;">HAZ CLIC AQUÍ PARA JUGAR</span></h1>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
