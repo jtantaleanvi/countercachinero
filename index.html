@@ -2,28 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CONTRA: ALIEN WARS</title>
+    <title>CONTRA 8-BIT EDITION</title>
     <style>
-        body { background: #000; color: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; }
-        #game-container { position: relative; border: 4px solid #333; background: #000; width: 800px; height: 450px; }
-        #hud { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; font-size: 18px; z-index: 10; pointer-events: none; color: white; text-shadow: 2px 2px #000; }
-        #start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; cursor: pointer; border: 2px solid red; }
-        canvas { display: block; background: #000022; }
+        body { background: #050505; color: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; }
+        #game-container { position: relative; border: 4px solid #333; box-shadow: 0 0 20px rgba(255,0,0,0.2); }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; cursor: pointer; }
+        canvas { display: block; background: linear-gradient(to bottom, #000022 0%, #000 100%); }
+        .hint { color: #888; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div id="game-container">
-        <div id="start-overlay" onclick="iniciarJuego()">
-            <h1 style="color:red; font-size: 50px; margin:0;">CONTRA JS</h1>
-            <p style="color:white; font-size: 20px;">¡HAZ CLIC AQUÍ PARA JUGAR!</p>
-            <div style="color:#888; font-size: 12px; margin-top: 20px;">
-                FLECHAS: Mover | Z: Saltar | X: Disparar | 1, 2, 3: Armas
-            </div>
-        </div>
-        <div id="hud">
-            <div>SCORE: <span id="sc-val">0</span></div>
-            <div>VIDA: <span id="hp-val">100</span>%</div>
-            <div>ARMA: <span id="wp-val">RIFLE</span></div>
+        <div id="overlay" onclick="start()">
+            <h1 style="color:red; font-size: 40px; margin:0;">CONTRA 8-BIT</h1>
+            <p>CLICK PARA EMPEZAR</p>
+            <div class="hint">FLECHAS: Mover | Z: Saltar | X: Disparar | 1-3: Armas</div>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
