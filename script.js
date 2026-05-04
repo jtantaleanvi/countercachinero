@@ -1,189 +1,146 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const startScreen = document.getElementById('start-screen');
+const overlay = document.getElementById('overlay');
+const hpDisplay = document.getElementById('hp');
 
 canvas.width = 800;
 canvas.height = 450;
 
-// CONFIGURACIÓN DE NIVEL
-const world = { width: 4000, height: 450, gravity: 0.7 };
-const camera = { x: 0, y: 0 };
 let gameRunning = false;
+const gravity = 0.8;
+const keys = {};
 
-// CONTROL DE ENTRADA (Arregla el bug de movimiento)
-const input = {
-    right: false, left: false, up: false, down: false,
-    jump: false, shoot: false
+// CONFIGURACIÓN DEL JUGADOR
+const player = {
+    x: 50, y: 300, w: 30, h: 50,
+    vx: 0, vy: 0,
+    speed: 6, jump: -15,
+    grounded: false, dir: 1,
+    bullets: []
 };
 
-const handleKey = (e, status) => {
-    switch(e.code) {
-        case 'ArrowRight': case 'KeyD': input.right = status; break;
-        case 'ArrowLeft':  case 'KeyA': input.left = status; break;
-        case 'ArrowUp':    case 'KeyW': input.up = status; break;
-        case 'ArrowDown':  case 'KeyS': input.down = status; break;
-        case 'KeyZ':       case 'Space': input.jump = status; break;
-        case 'KeyX':       case 'KeyK': input.shoot = status; break;
-    }
-};
+// MAPA (Plataformas)
+const platforms = [
+    {x: 0, y: 400, w: 2000, h: 50}, // Suelo largo
+    {x: 300, y: 300, w: 200, h: 20},
+    {x: 600, y: 200, w: 200, h: 20},
+    {x: 900, y: 300, w: 200, h: 20}
+];
 
-window.addEventListener('keydown', e => handleKey(e, true));
-window.addEventListener('keyup', e => handleKey(e, false));
+// ENEMIGOS
+let enemies = [{x: 500, y: 360, w: 30, h: 40, alive: true}];
 
-// OBJETOS DEL JUEGO
-class Player {
-    constructor() {
-        this.x = 100; this.y = 300;
-        this.w = 35;  this.h = 55;
-        this.vx = 0;  this.vy = 0;
-        this.dir = 1; // 1: derecha, -1: izquierda
-        this.isJumping = false;
-        this.bullets = [];
-        this.hp = 100;
-        this.lastShot = 0;
-    }
+// CONTROL DE TECLADO REFORZADO
+window.addEventListener('keydown', e => { 
+    keys[e.key] = true; 
+    if(e.key === 'x' || e.key === 'X') shoot(); 
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-    draw() {
-        ctx.save();
-        ctx.translate(this.x - camera.x, this.y);
-        if (this.dir === -1) { ctx.translate(this.w, 0); ctx.scale(-1, 1); }
+function startGame() {
+    gameRunning = true;
+    overlay.style.display = 'none';
+    window.focus(); // Asegura que el navegador escuche las teclas
+}
 
-        // Cuerpo (Estilo 8-bit)
-        ctx.fillStyle = "#2255ff"; // Pantalón
-        ctx.fillRect(5, 30, 20, 25);
-        ctx.fillStyle = "#ffaa88"; // Piel
-        ctx.fillRect(8, 10, 15, 20);
-        ctx.fillStyle = "#ff0000"; // Chaleco
-        ctx.fillRect(5, 15, 20, 15);
-        ctx.fillStyle = "#333";    // Botas/Pelo
-        ctx.fillRect(8, 0, 15, 10);
-        
-        // Arma
-        ctx.fillStyle = "#777";
-        ctx.fillRect(20, 20, 25, 6);
-        ctx.restore();
+function shoot() {
+    if(!gameRunning) return;
+    player.bullets.push({
+        x: player.x + (player.dir === 1 ? 30 : -5),
+        y: player.y + 20,
+        vx: 12 * player.dir
+    });
+}
 
-        // Balas
-        this.bullets.forEach((b, i) => {
-            b.x += b.vx;
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(b.x - camera.x, b.y, 4, 0, Math.PI*2);
-            ctx.fill();
-            if (b.x > camera.x + canvas.width || b.x < camera.x) this.bullets.splice(i, 1);
-        });
+function update() {
+    if (!gameRunning) return;
+
+    // Movimiento
+    if (keys['ArrowRight'] || keys['d']) { player.vx = player.speed; player.dir = 1; }
+    else if (keys['ArrowLeft'] || keys['a']) { player.vx = -player.speed; player.dir = -1; }
+    else { player.vx = 0; }
+
+    // Salto
+    if ((keys['z'] || keys['Z'] || keys[' ']) && player.grounded) {
+        player.vy = player.jump;
+        player.grounded = false;
     }
 
-    update(platforms) {
-        if (input.right) { this.vx = 6; this.dir = 1; }
-        else if (input.left) { this.vx = -6; this.dir = -1; }
-        else { this.vx *= 0.8; }
+    player.vy += gravity;
+    player.x += player.vx;
+    player.y += player.vy;
 
-        if (input.jump && !this.isJumping) {
-            this.vy = -15;
-            this.isJumping = true;
+    // Colisión con suelo y plataformas
+    player.grounded = false;
+    platforms.forEach(p => {
+        if (player.vy > 0 && 
+            player.x + player.w > p.x && player.x < p.x + p.w &&
+            player.y + player.h > p.y && player.y + player.h < p.y + p.h + player.vy) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
         }
+    });
 
-        this.vy += world.gravity;
-        this.x += this.vx;
-        this.y += this.vy;
-
-        // Colisiones
-        platforms.forEach(p => {
-            if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w &&
-                this.y + this.h > p.y && this.y + this.h < p.y + p.h + this.vy) {
-                this.y = p.y - this.h;
-                this.vy = 0;
-                this.isJumping = false;
+    // Balas
+    player.bullets.forEach((b, i) => {
+        b.x += b.vx;
+        if (b.x > player.x + 800 || b.x < player.x - 800) player.bullets.splice(i, 1);
+        
+        // Matar enemigos
+        enemies.forEach(en => {
+            if(en.alive && b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                en.alive = false;
+                player.bullets.splice(i, 1);
             }
         });
-
-        // Limites
-        if (this.x < 0) this.x = 0;
-        if (this.y > world.height) { this.y = 0; this.hp -= 20; } // Caída al vacío
-
-        // Scroll de cámara
-        camera.x = this.x - canvas.width / 3;
-        if (camera.x < 0) camera.x = 0;
-        if (camera.x > world.width - canvas.width) camera.x = world.width - canvas.width;
-
-        if (input.shoot) this.fire();
-    }
-
-    fire() {
-        let now = Date.now();
-        if (now - this.lastShot > 150) {
-            this.bullets.push({ x: this.x + (this.dir === 1 ? 40 : -10), y: this.y + 23, vx: 15 * this.dir });
-            this.lastShot = now;
-        }
-    }
+    });
 }
 
-// ESCENARIO
-const platforms = [
-    { x: 0, y: 400, w: 800, h: 50 },
-    { x: 900, y: 350, w: 400, h: 30 },
-    { x: 1400, y: 300, w: 300, h: 30 },
-    { x: 1800, y: 400, w: 1000, h: 50 },
-    { x: 2200, y: 250, w: 200, h: 20 },
-];
-
-const enemies = [
-    { x: 600, y: 350, w: 40, h: 50, alive: true },
-    { x: 1100, y: 300, w: 40, h: 50, alive: true },
-    { x: 2500, y: 350, w: 40, h: 50, alive: true }
-];
-
-const p1 = new Player();
-
-// LOOP PRINCIPAL
-function main() {
+function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Cámara simple (sigue al jugador)
+    let camX = player.x - 150;
 
-    if (gameRunning) {
-        // Fondo (Paralaje)
-        ctx.fillStyle = "#000022";
-        for(let i=0; i<10; i++) {
-            ctx.fillRect((i * 500) - camera.x * 0.3, 100, 200, 350);
-        }
+    ctx.save();
+    ctx.translate(-camX, 0);
 
-        // Dibujar Plataformas
-        ctx.fillStyle = "#33aa33";
-        platforms.forEach(p => {
-            ctx.fillRect(p.x - camera.x, p.y, p.w, p.h);
-            ctx.fillStyle = "#115511";
-            ctx.fillRect(p.x - camera.x, p.y + 10, p.w, 5); // Detalle hierba
-            ctx.fillStyle = "#33aa33";
-        });
+    // Dibujar Plataformas (Textura de metal/bloque)
+    ctx.fillStyle = "#555";
+    platforms.forEach(p => {
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = "#888";
+        ctx.strokeRect(p.x, p.y, p.w, p.h);
+    });
 
-        // Enemigos
-        enemies.forEach(en => {
-            if (!en.alive) return;
-            ctx.fillStyle = "red";
-            ctx.fillRect(en.x - camera.x, en.y, en.w, en.h);
-            
-            // Colisión con balas
-            p1.bullets.forEach(b => {
-                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
-                    en.alive = false;
-                }
-            });
-        });
+    // Dibujar Enemigos
+    enemies.forEach(en => {
+        if(!en.alive) return;
+        ctx.fillStyle = "red";
+        ctx.fillRect(en.x, en.y, en.w, en.h);
+    });
 
-        p1.update(platforms);
-        p1.draw();
+    // Dibujar Jugador (Estilo pixel-art básico)
+    ctx.fillStyle = "#0af"; // Pantalón
+    ctx.fillRect(player.x, player.y + 20, 30, 30);
+    ctx.fillStyle = "#f85"; // Piel
+    ctx.fillRect(player.x + 5, player.y, 20, 20);
+    ctx.fillStyle = "#fff"; // Arma
+    if(player.dir === 1) ctx.fillRect(player.x + 20, player.y + 15, 20, 8);
+    else ctx.fillRect(player.x - 10, player.y + 15, 20, 8);
 
-        document.getElementById('health').innerText = Math.max(0, p1.hp);
-        document.getElementById('score').innerText = (4000 - Math.floor(enemies.filter(e => e.alive).length * 1000)).toString().padStart(5, '0');
+    // Dibujar Balas
+    ctx.fillStyle = "yellow";
+    player.bullets.forEach(b => ctx.fillRect(b.x, b.y, 10, 5));
 
-    }
-
-    requestAnimationFrame(main);
+    ctx.restore();
 }
 
-startScreen.addEventListener('click', () => {
-    gameRunning = true;
-    startScreen.style.display = 'none';
-});
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
 
-main();
+loop();
