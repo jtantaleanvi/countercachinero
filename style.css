@@ -1,4 +1,4 @@
-/* RESET Y FONDO TOTAL */
+/* RESET GENERAL */
 body {
     background-color: #050505;
     margin: 0;
@@ -11,90 +11,94 @@ body {
     color: #fff;
 }
 
-/* CONTENEDOR ARCADE */
+/* CONTENEDOR DEL ARCADE */
 #game-wrapper {
     position: relative;
-    border: 10px solid #222;
-    border-radius: 15px;
-    box-shadow: 
-        0 0 0 5px #444, 
-        0 0 50px rgba(255, 0, 0, 0.4),
-        inset 0 0 100px rgba(0,0,0,0.8);
+    width: 800px;
+    height: 450px;
+    border: 12px solid #222;
+    border-radius: 10px;
+    box-shadow: 0 0 0 4px #444, 0 0 60px rgba(255, 0, 0, 0.3);
     background: #000;
 }
 
-/* EFECTO CRT (Líneas de escaneo de TV vieja) */
-#game-wrapper::after {
-    content: " ";
-    position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
-                linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-    z-index: 10;
-    background-size: 100% 3px, 3px 100%;
-    pointer-events: none; /* Crucial para que no bloquee el click */
-}
-
-/* HUD (VIDA, SCORE, ARMA) */
-#hud {
-    position: absolute;
-    top: 15px;
-    width: 100%;
-    display: flex;
-    justify-content: space-around;
-    font-size: 22px;
-    font-weight: bold;
-    z-index: 15;
-    pointer-events: none;
-    text-shadow: 2px 2px #000, 0 0 10px rgba(0, 255, 0, 0.5);
-}
-
-#sc { color: #ffcc00; } /* Oro */
-#hp { color: #ff3333; } /* Rojo */
-#gun { color: #00ffff; } /* Cian */
-
-/* PANTALLA DE INICIO */
+/* PANTALLA DE INICIO (OVERLAY Z-INDEX EXTREMO) */
 #overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle, #200 0%, #000 100%);
+    background: radial-gradient(circle, #2a0000 0%, #000 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 9999; /* Imposible que algo lo tape */
     cursor: pointer;
-    transition: opacity 0.5s;
 }
 
 #overlay h1 {
     font-size: 65px;
     color: #ff0000;
-    margin: 0;
-    text-shadow: 5px 5px 0px #fff, 0 0 30px #f00;
-    letter-spacing: -5px;
+    margin: 0 0 20px 0;
+    text-shadow: 4px 4px 0px #fff, 0 0 30px #f00;
     font-style: italic;
+    letter-spacing: -2px;
 }
 
-#overlay p {
-    font-size: 20px;
-    margin-top: 25px;
-    color: #fff;
-    letter-spacing: 3px;
-}
-
-/* ANIMACIÓN "INSERT COIN" */
-.blink {
-    animation: blinker 0.8s step-end infinite;
+.btn-play {
+    border: 4px solid #fff;
+    padding: 15px 30px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffcc00;
+    text-shadow: 2px 2px 0 #000;
+    animation: blinker 1s step-end infinite;
 }
 
 @keyframes blinker {
     50% { opacity: 0; }
 }
 
-/* RENDERIZADO PIXELADO (Para que no se vea borroso) */
+.controls {
+    margin-top: 30px;
+    color: #888;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+/* HUD - MARCADORES */
+#hud {
+    position: absolute;
+    top: 15px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    font-size: 20px;
+    font-weight: bold;
+    z-index: 100;
+    pointer-events: none; /* Atraviesa los clics */
+    text-shadow: 2px 2px #000, 0 0 5px rgba(0,0,0,0.8);
+}
+
+#sc-val { color: #ffcc00; }
+#hp-val { color: #ff3333; }
+#wp-val { color: #00ffff; }
+
+/* CANVAS PIXELADO */
 canvas {
     display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #000022 0%, #000000 100%);
     image-rendering: pixelated;
-    image-rendering: crisp-edges;
+}
+
+/* EFECTO CRT VIEJO */
+#crt-effect {
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 3px, 3px 100%;
+    z-index: 200;
+    pointer-events: none; /* Fundamental para no estorbar */
 }
