@@ -2,20 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Contra Clone - Beta</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contra: GitHub Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-wrapper">
-        <div id="ui">
-            <span id="health-display">Salud: 100</span>
-            <span id="weapon-display">Arma: Rifle</span>
+    <div id="game-container">
+        <div id="start-screen">
+            <h1>CONTRA JS</h1>
+            <p>HAZ CLIC PARA EMPEZAR</p>
+        </div>
+        <div id="hud">
+            <div>P1: <span id="score">00000</span></div>
+            <div>VIDA: <span id="health">100</span>%</div>
+            <div>ARMA: <span id="weapon">RIFLE</span></div>
         </div>
         <canvas id="gameCanvas"></canvas>
-        <div id="controls">
-            <p><strong>Mover:</strong> Flechas | <strong>Saltar:</strong> Z | <strong>Disparar:</strong> X</p>
-            <p><strong>Cambiar Arma:</strong> 1 (Rifle), 2 (Spread), 3 (Metralleta)</p>
-        </div>
     </div>
     <script src="script.js"></script>
 </body>
